@@ -431,24 +431,50 @@ class TextInputTranslator extends Component {
  * FlatList组件必须的两个属性是data和renderItem。data是列表的数据源，而renderItem则从数据源中逐个解析数据，然后返回一个设定好格式的组件来渲染。
  */
 class FlatListBasics extends Component {
+    constructor() {
+        super();
+        this.state = {
+            flatListData: [
+                {name: "devin"},
+                {name: "Micheal"},
+                {name: "Jaime"},
+                {name: "佛兰德斯的狗"},
+                {name: "茹拉夫"}
+            ],
+        }
+    }
+
+    componentDidMount() {
+        this.getDataFromApiAsync();
+    }
+
     render() {
         return (
             <View style={styles.scrollView}>
                 <FlatList
-                    data={
-                        [
-                            {name: "devin"},
-                            {name: "Micheal"},
-                            {name: "Jaime"},
-                            {name: "佛兰德斯的狗"},
-                            {name: "茹拉夫"}
-                        ]
-                    }
-                    renderItem={({item}) => <Text style={{color: "white"}}>{item.name}</Text>}
+                    data={this.state.flatListData}
+                    renderItem={({item}) => <Text style={{color: "white"}}>{item.request_title}</Text>}
                     horizontal={false}
                 />
             </View>
         );
+    }
+
+
+    /**
+     * 从服务端获取数据
+     * @returns {Promise<T>}
+     */
+    getDataFromApiAsync() {
+        return fetch('https://dev.popmach.com/api/service/main/list_request_center')
+            .then((response) => response.json())
+            .then((responseJson) => { //这儿的responseJson是上一个then函数中处理成功后的JSON（及上一个then函数返回的new Promise(function (resolve, reject) {});里的resolve内部值）
+                    this.setState({flatListData: responseJson.data});
+                }
+            )
+            .catch((error) => {
+                console.error(error);
+            });
     }
 }
 
@@ -917,19 +943,19 @@ export default class HelloWorldApp extends Component {
             </View>
         )
 
-        //用InteractionManager来确保在执行繁重工作之前所有的交互和动画都已经处理完毕。
-        InteractionManager.runAfterInteractions(() => {
-            // 在交互结束之后执行：需要长时间同步执行的任务。
-            this.getMOviewsApi();
-        });
-        //InteractionManager还允许应用注册动画，在动画开始时创建一个交互“句柄”，然后在结束的时候清除它。
-        var handle = InteractionManager.createInteractionHandle();
-        // 执行动画... (`runAfterInteractions`中的任务现在开始排队等候)
-        // 在动画完成之后
-        InteractionManager.clearInteractionHandle(handle);
-        // 在所有句柄都清除之后，现在开始依序执行队列中的任务
-        //务必在卸载组件前清除定时器！
-        // 在unmount组件时清除（clearTimeout/clearInterval）所有用到的定时器
+        /* //用InteractionManager来确保在执行繁重工作之前所有的交互和动画都已经处理完毕。
+         InteractionManager.runAfterInteractions(() => {
+             // 在交互结束之后执行：需要长时间同步执行的任务。
+             this.getRemoteServerApi();
+         });
+         //InteractionManager还允许应用注册动画，在动画开始时创建一个交互“句柄”，然后在结束的时候清除它。
+         var handle = InteractionManager.createInteractionHandle();
+         // 执行动画... (`runAfterInteractions`中的任务现在开始排队等候)
+         // 在动画完成之后
+         InteractionManager.clearInteractionHandle(handle);
+         // 在所有句柄都清除之后，现在开始依序执行队列中的任务
+         //务必在卸载组件前清除定时器！
+         // 在unmount组件时清除（clearTimeout/clearInterval）所有用到的定时器*/
     }
 
     /**
@@ -941,7 +967,6 @@ export default class HelloWorldApp extends Component {
      * componentDidMount()：只会在装载完成之后调用一次，在 render之后调用，从这里开始可以通过ReactDOM.findDOMNode(this)获取到组件的 DOM 节点。
      */
     componentDidMount() {
-        this.getMOviewsApi();
         AppState.addEventListener('change', this.handleAppStateChange); //监听应用状态的变化。type参数应填change 。
         /**
          * getInitialURL()： 如果应用是被一个链接调起的，则会返回相应的链接地址。否则它会返回null。
@@ -961,25 +986,6 @@ export default class HelloWorldApp extends Component {
      */
     componentWillUnmount() {
         AppState.removeEventListener('change', this.handleAppStateChange); //移除一个监听函数。type参数应填change。
-    }
-
-    /**
-     * 注意这个方法前面有async关键字
-     */
-    async getMOviewsApi() {
-        try {
-            // 注意这里的await语句，其所在的函数必须有async关键字声明
-            let response = await
-                fetch('https://dev.popmach.com/api/service/main/list_request_center');
-            let responseText = await response.text()
-            console.log("responseText：" + responseText);
-            return responseText;
-            // let responseJson = await  response.json();
-            // console.log("status：" + responseJson.status + "；code：" + responseJson.code + "；total_rows：" + responseJson.total_rows + "；data：" + responseJson.data);
-            return responseJson;
-        } catch (error) {
-            console.error("哎，网络请求又出错了：" + error);
-        }
     }
 }
 
@@ -1143,7 +1149,7 @@ const styles = StyleSheet.create({
  */
 NetInfo.addEventListener('connectionChange', handleFirstConnectivityChange);
 NetInfo.getConnectionInfo().then((connectionInfo) => {
-    console.log('Initial, type: ' + connectionInfo.type + ', effectiveType: ' + connectionInfo.effectiveType);
+    console.log(' Initial, type: ' + connectionInfo.type + ', effectiveType: ' + connectionInfo.effectiveType);
 });
 /**
  * isConnected: ObjectExpression
@@ -1151,12 +1157,12 @@ NetInfo.getConnectionInfo().then((connectionInfo) => {
  * fetch()：返回一个promise，用于获取当前的网络状况/类型。
  */
 NetInfo.isConnected.fetch().done((isConnected) => {
-    console.log('First, is ' + (isConnected ? 'online' : 'offline'));
+    console.log(' First, is ' + (isConnected ? ' online' : ' offline'));
 });
 
 function handleFirstConnectivityChange(connectionInfo) {
-    console.log('First change, type: ' + connectionInfo.type + ', effectiveType: ' + connectionInfo.effectiveType);
-    NetInfo.removeEventListener('connectionChange', handleFirstConnectivityChange);
+    console.log(' First change, type: ' + connectionInfo.type + ', effectiveType: ' + connectionInfo.effectiveType);
+    NetInfo.removeEventListener(' connectionChange', handleFirstConnectivityChange);
 }
 
 
@@ -1164,7 +1170,7 @@ function handleFirstConnectivityChange(connectionInfo) {
  * 监听设备上的后退按钮事件。
  *监听函数是按倒序的顺序执行（即后添加的函数先执行）。如果某一个函数返回true，则后续的函数都不会被调用。
  */
-BackHandler.addEventListener('hardwareBackPress', function () {
+BackHandler.addEventListener(' hardwareBackPress', function () {
     console.log("hardwareBackPress");
     // BackHandler.exitApp();
     return true;
